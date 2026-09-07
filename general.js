@@ -2,9 +2,10 @@ const express = require('express');
 let books = require("./booksdb.js");
 let isValid = require("./auth_users.js").isValid;
 let users = require("./auth_users.js").users;
+const axios = require('axios');
 const public_users = express.Router();
 
-// Task 6: Register a new user
+// Task 6: Register User
 public_users.post("/register", (req, res) => {
   const username = req.body.username;
   const password = req.body.password;
@@ -14,96 +15,103 @@ public_users.post("/register", (req, res) => {
       users.push({ "username": username, "password": password });
       return res.status(200).json({ message: "Customer successfully registered. Now you can login" });
     } else {
-      return res.status(404).json({ message: "User already exists!" });
+      return res.status(400).json({ message: "User already exists!" });
     }
   }
-  return res.status(404).json({ message: "Unable to register user. Username and password required." });
+  return res.status(400).json({ message: "Unable to register user." });
 });
 
-// Task 1 & Task 10: Get the book list available in the shop using Promises
+// Task 1: Get all books
 public_users.get('/', function (req, res) {
-  const getBooks = new Promise((resolve, reject) => {
-    resolve(books);
-  });
-
-  getBooks
-    .then((bookList) => res.status(200).send(JSON.stringify(bookList, null, 4)))
-    .catch((err) => res.status(500).json({ message: "Error retrieving books" }));
+  return res.status(200).send(JSON.stringify(books, null, 4));
 });
 
-// Task 2 & Task 11: Get book details based on ISBN using Promises
+// Task 10: Get all books using Async/Await & Axios
+const getAllBooks = async () => {
+  try {
+    const response = await axios.get('http://localhost:5000/');
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching books:", error);
+  }
+};
+
+// Task 2: Get book details based on ISBN
 public_users.get('/isbn/:isbn', function (req, res) {
   const isbn = req.params.isbn;
-  const getBookByISBN = new Promise((resolve, reject) => {
-    if (books[isbn]) {
-      resolve(books[isbn]);
-    } else {
-      reject("Book not found");
-    }
-  });
-
-  getBookByISBN
-    .then((book) => res.status(200).json(book))
-    .catch((err) => res.status(404).json({ message: err }));
+  if (books[isbn]) {
+    return res.status(200).json(books[isbn]);
+  } else {
+    return res.status(404).json({ message: "Book not found" });
+  }
 });
 
-// Task 3 & Task 12: Get book details based on Author using Promises
+// Task 11: Get book details based on ISBN using Axios Promise
+const getBookByISBN = (isbn) => {
+  return axios.get(`http://localhost:5000/isbn/${isbn}`)
+    .then(response => response.data)
+    .catch(error => console.error("Error fetching book by ISBN:", error));
+};
+
+// Task 3: Get book details based on Author
 public_users.get('/author/:author', function (req, res) {
   const author = req.params.author;
-  const getBooksByAuthor = new Promise((resolve, reject) => {
-    const keys = Object.keys(books);
-    let booksByAuthor = [];
-    
-    keys.forEach((key) => {
-      if (books[key].author.toLowerCase() === author.toLowerCase()) {
-        booksByAuthor.push({
-          isbn: key,
-          title: books[key].title,
-          reviews: books[key].reviews
-        });
-      }
-    });
-
-    if (booksByAuthor.length > 0) {
-      resolve(booksByAuthor);
-    } else {
-      reject("No books found by this author");
+  let booksByAuthor = [];
+  
+  for (let key in books) {
+    if (books[key].author.toLowerCase() === author.toLowerCase()) {
+      booksByAuthor.push({
+        isbn: key,
+        author: books[key].author,
+        title: books[key].title,
+        reviews: books[key].reviews
+      });
     }
-  });
+  }
 
-  getBooksByAuthor
-    .then((result) => res.status(200).json({ booksbyauthor: result }))
-    .catch((err) => res.status(404).json({ message: err }));
+  if (booksByAuthor.length > 0) {
+    return res.status(200).json(booksByAuthor);
+  } else {
+    return res.status(404).json({ message: "No books found by this author" });
+  }
 });
 
-// Task 4 & Task 13: Get book details based on Title using Promises
+// Task 12: Get book details based on Author using Axios Promise
+const getBooksByAuthor = (author) => {
+  return axios.get(`http://localhost:5000/author/${author}`)
+    .then(response => response.data)
+    .catch(error => console.error("Error fetching books by Author:", error));
+};
+
+// Task 4: Get book details based on Title
 public_users.get('/title/:title', function (req, res) {
   const title = req.params.title;
-  const getBooksByTitle = new Promise((resolve, reject) => {
-    const keys = Object.keys(books);
-    let booksByTitle = [];
+  let booksByTitle = [];
 
-    keys.forEach((key) => {
-      if (books[key].title.toLowerCase() === title.toLowerCase()) {
-        booksByTitle.push({
-          isbn: key,
-          author: books[key].author,
-          reviews: books[key].reviews
-        });
-      }
-    });
-
-    if (booksByTitle.length > 0) {
-      resolve(booksByTitle);
-    } else {
-      reject("No books found with this title");
+  for (let key in books) {
+    if (books[key].title.toLowerCase() === title.toLowerCase()) {
+      booksByTitle.push({
+        isbn: key,
+        author: books[key].author,
+        title: books[key].title,
+        reviews: books[key].reviews
+      });
     }
-  });
+  }
 
-  getBooksByTitle
-    .then((result) => res.status(200).json({ booksbytitle: result }))
-    .catch((err) => res.status(404).json({ message: err }));
+  if (booksByTitle.length > 0) {
+    return res.status(200).json(booksByTitle);
+  } else {
+    return res.status(404).json({ message: "No books found with this title" });
+  }
 });
+
+// Task 13: Get book details based on Title using Axios Promise
+const getBooksByTitle = (title) => {
+  return axios.get(`http://localhost:5000/title/${title}`)
+    .then(response => response.data)
+    .catch(error => console.error("Error fetching books by Title:", error));
+};
 
 // Task 5: Get book review
 public_users.get('/review/:isbn', function (req, res) {
